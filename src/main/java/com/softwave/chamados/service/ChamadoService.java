@@ -7,24 +7,26 @@ import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
 import java.util.*;
+import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.concurrent.atomic.AtomicLong;
 
 @Service
 public class ChamadoService {
     
-    private Long proximoId = 1L;
+    private final AtomicLong proximoId = new AtomicLong(1);
     
-    // Fila (Queue) FIFO para chamados comuns
-    private final Queue<Chamado> filaChamadosComuns = new LinkedList<>();
+    // Fila (Queue) FIFO para chamados comuns - thread-safe
+    private final Queue<Chamado> filaChamadosComuns = new ConcurrentLinkedQueue<>();
     
-    // Pilha (Stack) LIFO para chamados de emergência
+    // Pilha (Stack) LIFO para chamados de emergência - synchronized
     private final Stack<Chamado> pilhaChamadosEmergencia = new Stack<>();
     
-    // Lista para histórico completo
-    private final List<Chamado> historicoCompleto = new ArrayList<>();
+    // Lista para histórico completo - synchronized
+    private final List<Chamado> historicoCompleto = Collections.synchronizedList(new ArrayList<>());
     
     public Chamado criarChamado(String descricao, TipoChamado tipo) {
         Chamado chamado = new Chamado();
-        chamado.setId(proximoId++);
+        chamado.setId(proximoId.getAndIncrement());
         chamado.setDescricao(descricao);
         chamado.setTipo(tipo);
         chamado.setDataHoraCriacao(LocalDateTime.now());
@@ -37,7 +39,9 @@ public class ChamadoService {
         if (tipo == TipoChamado.COMUM) {
             filaChamadosComuns.offer(chamado);
         } else {
-            pilhaChamadosEmergencia.push(chamado);
+            synchronized (pilhaChamadosEmergencia) {
+                pilhaChamadosEmergencia.push(chamado);
+            }
         }
         
         return chamado;
@@ -46,7 +50,9 @@ public class ChamadoService {
     public List<Chamado> listarChamadosEmEspera() {
         List<Chamado> emEspera = new ArrayList<>();
         emEspera.addAll(filaChamadosComuns);
-        emEspera.addAll(pilhaChamadosEmergencia);
+        synchronized (pilhaChamadosEmergencia) {
+            emEspera.addAll(pilhaChamadosEmergencia);
+        }
         return emEspera;
     }
     
@@ -55,7 +61,9 @@ public class ChamadoService {
     }
     
     public List<Chamado> listarPilhaEmergencia() {
-        return new ArrayList<>(pilhaChamadosEmergencia);
+        synchronized (pilhaChamadosEmergencia) {
+            return new ArrayList<>(pilhaChamadosEmergencia);
+        }
     }
     
     public Chamado atenderChamadoComum() {
@@ -68,16 +76,20 @@ public class ChamadoService {
     }
     
     public Chamado atenderChamadoEmergencia() {
-        if (!pilhaChamadosEmergencia.isEmpty()) {
-            Chamado chamado = pilhaChamadosEmergencia.pop();
-            chamado.setStatus(StatusChamado.ATENDIDO);
-            chamado.setDataHoraAtendimento(LocalDateTime.now());
-            return chamado;
+        synchronized (pilhaChamadosEmergencia) {
+            if (!pilhaChamadosEmergencia.isEmpty()) {
+                Chamado chamado = pilhaChamadosEmergencia.pop();
+                chamado.setStatus(StatusChamado.ATENDIDO);
+                chamado.setDataHoraAtendimento(LocalDateTime.now());
+                return chamado;
+            }
         }
         return null;
     }
     
     public List<Chamado> consultarHistorico() {
-        return new ArrayList<>(historicoCompleto);
+        synchronized (historicoCompleto) {
+            return new ArrayList<>(historicoCompleto);
+        }
     }
 }

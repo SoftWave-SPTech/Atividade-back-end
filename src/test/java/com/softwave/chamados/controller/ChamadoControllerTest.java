@@ -112,4 +112,20 @@ class ChamadoControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$").isArray());
     }
+    
+    @Test
+    void deveRetornarBadRequestQuandoDescricaoVazia() throws Exception {
+        mockMvc.perform(post("/chamados")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"descricao\":\"\",\"tipo\":\"COMUM\"}"))
+                .andExpect(status().isBadRequest());
+    }
+    
+    @Test
+    void deveRetornarBadRequestQuandoTipoNulo() throws Exception {
+        mockMvc.perform(post("/chamados")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"descricao\":\"Teste\"}"))
+                .andExpect(status().isBadRequest());
+    }
 }

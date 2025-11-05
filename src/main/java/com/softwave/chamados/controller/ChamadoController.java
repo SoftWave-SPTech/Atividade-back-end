@@ -3,6 +3,7 @@ package com.softwave.chamados.controller;
 import com.softwave.chamados.dto.ChamadoRequest;
 import com.softwave.chamados.model.Chamado;
 import com.softwave.chamados.service.ChamadoService;
+import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -18,7 +19,7 @@ public class ChamadoController {
     private ChamadoService chamadoService;
     
     @PostMapping
-    public ResponseEntity<Chamado> criarChamado(@RequestBody ChamadoRequest request) {
+    public ResponseEntity<Chamado> criarChamado(@Valid @RequestBody ChamadoRequest request) {
         Chamado chamado = chamadoService.criarChamado(request.getDescricao(), request.getTipo());
         return ResponseEntity.status(HttpStatus.CREATED).body(chamado);
     }
